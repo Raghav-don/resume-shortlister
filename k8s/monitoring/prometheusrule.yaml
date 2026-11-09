@@ -1,0 +1,98 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: resume-shortlister-alerts
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: resume-shortlister.rules
+      rules:
+        - alert: BackendDown
+          expr: up{job="resume-shortlister-backend"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Resume Shortlister Backend is down"
+            description: "Backend has been down for more than 2 minutes"
+
+        - alert: BackendHighErrorRate
+          expr: |
+            sum(rate(http_server_requests_seconds_count{job="resume-shortlister-backend",status=~"5.."}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{job="resume-shortlister-backend"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate on Resume Shortlister Backend"
+            description: "Error rate is above 5% for the last 5 minutes"
+
+        - alert: BackendHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_server_requests_seconds_bucket{job="resume-shortlister-backend"}[5m])) by (le)
+            ) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency on Resume Shortlister Backend"
+            description: "P95 latency is above 1 second for the last 5 minutes"
+
+        - alert: BackendHighMemoryUsage
+          expr: |
+            (container_memory_usage_bytes{pod=~"resume-shortlister-backend-.*"}
+            / container_spec_memory_limit_bytes{pod=~"resume-shortlister-backend-.*"}) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage on Resume Shortlister Backend"
+            description: "Memory usage is above 85% of limit"
+
+        - alert: BackendHighCPUUsage
+          expr: |
+            sum(rate(container_cpu_usage_seconds_total{pod=~"resume-shortlister-backend-.*"}[5m]))
+            /
+            sum(container_spec_cpu_quota{pod=~"resume-shortlister-backend-.*"} / container_spec_cpu_period{pod=~"resume-shortlister-backend-.*"}) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage on Resume Shortlister Backend"
+            description: "CPU usage is above 80% of limit"
+
+        - alert: DatabaseConnectionsHigh
+          expr: |
+            hikaricp_connections_active{job="resume-shortlister-backend"}
+            /
+            hikaricp_connections_max{job="resume-shortlister-backend"} > 0.80
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High database connection pool usage"
+            description: "Active connections are above 80% of max pool size"
+
+        - alert: RateLimitExceeded
+          expr: |
+            increase(http_server_requests_seconds_count{job="resume-shortlister-backend",status="429"}[5m]) > 10
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Rate limit exceeded frequently"
+            description: "More than 10 requests were rate limited in the last 5 minutes"
+
+        - alert: AuditLogFailures
+          expr: |
+            increase(audit_log_failure_total[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Audit log write failures detected"
+            description: "Failed to write audit logs - check disk space and permissions"

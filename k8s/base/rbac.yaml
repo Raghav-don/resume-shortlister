@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: resume-shortlister
+  namespace: resume-shortlister
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: resume-shortlister-role
+  namespace: resume-shortlister
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: resume-shortlister-rolebinding
+  namespace: resume-shortlister
+subjects:
+  - kind: ServiceAccount
+    name: resume-shortlister
+    namespace: resume-shortlister
+roleRef:
+  kind: Role
+  name: resume-shortlister-role
+  apiGroup: rbac.authorization.k8s.io

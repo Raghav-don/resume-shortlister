@@ -1,0 +1,150 @@
+{
+  "dashboard": {
+    "title": "Resume Shortlister - Application Metrics",
+    "tags": ["resume-shortlister", "application"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"resume-shortlister-backend\"}[1m])) by (uri, method)",
+            "legendFormat": "{{method}} {{uri}}"
+          }
+        ]
+      },
+      {
+        "title": "Response Time (P50, P95, P99)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"resume-shortlister-backend\"}[5m])) by (le))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"resume-shortlister-backend\"}[5m])) by (le))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"resume-shortlister-backend\"}[5m])) by (le))",
+            "legendFormat": "P99"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate by Status",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"resume-shortlister-backend\",status=~\"4..\"}[5m])) by (status)",
+            "legendFormat": "4xx - {{status}}"
+          },
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"resume-shortlister-backend\",status=~\"5..\"}[5m])) by (status)",
+            "legendFormat": "5xx - {{status}}"
+          }
+        ]
+      },
+      {
+        "title": "Active Database Connections",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{job=\"resume-shortlister-backend\"}",
+            "legendFormat": "Active"
+          },
+          {
+            "expr": "hikaricp_connections_idle{job=\"resume-shortlister-backend\"}",
+            "legendFormat": "Idle"
+          },
+          {
+            "expr": "hikaricp_connections_max{job=\"resume-shortlister-backend\"}",
+            "legendFormat": "Max"
+          }
+        ]
+      },
+      {
+        "title": "JVM Memory Usage",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{job=\"resume-shortlister-backend\",area=\"heap\"}",
+            "legendFormat": "Heap Used"
+          },
+          {
+            "expr": "jvm_memory_max_bytes{job=\"resume-shortlister-backend\",area=\"heap\"}",
+            "legendFormat": "Heap Max"
+          },
+          {
+            "expr": "jvm_memory_used_bytes{job=\"resume-shortlister-backend\",area=\"nonheap\"}",
+            "legendFormat": "Non-Heap Used"
+          }
+        ]
+      },
+      {
+        "title": "JVM GC Activity",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(jvm_gc_pause_seconds_sum{job=\"resume-shortlister-backend\"}[5m])",
+            "legendFormat": "GC Time/sec"
+          },
+          {
+            "expr": "rate(jvm_gc_pause_seconds_count{job=\"resume-shortlister-backend\"}[5m])",
+            "legendFormat": "GC Count/sec"
+          }
+        ]
+      },
+      {
+        "title": "Candidate Operations",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(candidate_created_total[5m]))",
+            "legendFormat": "Created"
+          },
+          {
+            "expr": "sum(rate(candidate_status_changed_total[5m]))",
+            "legendFormat": "Status Changed"
+          },
+          {
+            "expr": "sum(rate(candidate_deleted_total[5m]))",
+            "legendFormat": "Deleted"
+          }
+        ]
+      },
+      {
+        "title": "Authentication Rate",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(auth_login_success_total[5m]))",
+            "legendFormat": "Login Success"
+          },
+          {
+            "expr": "sum(rate(auth_login_failure_total[5m]))",
+            "legendFormat": "Login Failure"
+          },
+          {
+            "expr": "sum(rate(auth_register_total[5m]))",
+            "legendFormat": "Registrations"
+          }
+        ]
+      }
+    ]
+  }
+}

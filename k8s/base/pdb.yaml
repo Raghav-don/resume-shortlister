@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: resume-shortlister-backend-pdb
+  namespace: resume-shortlister
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: resume-shortlister-backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: resume-shortlister-frontend-pdb
+  namespace: resume-shortlister
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: resume-shortlister-frontend

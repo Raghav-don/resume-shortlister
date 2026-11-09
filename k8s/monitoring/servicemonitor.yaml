@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: resume-shortlister-backend-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: resume-shortlister-backend
+  endpoints:
+    - port: http
+      path: /api/actuator/prometheus
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - resume-shortlister-prod
+      - resume-shortlister-staging

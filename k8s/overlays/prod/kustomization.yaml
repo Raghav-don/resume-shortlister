@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: resume-shortlister-prod
+
+resources:
+  - ../../base
+
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: resume-shortlister-backend
+      spec:
+        replicas: 5
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: resume-shortlister-frontend
+      spec:
+        replicas: 5
+
+images:
+  - name: ghcr.io/your-org/resume-shortlister-backend
+    newTag: v1.0.0
+  - name: ghcr.io/your-org/resume-shortlister-frontend
+    newTag: v1.0.0
+
+configMapGenerator:
+  - name: resume-shortlister-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=production
+      - LOGGING_LEVEL_COM_RESUME_SHORTLISTER=WARN
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=ERROR

@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: resume-shortlister
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - rbac.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+
+commonLabels:
+  app.kubernetes.io/name: resume-shortlister
+  app.kubernetes.io/part-of: resume-shortlister
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: ghcr.io/your-org/resume-shortlister-backend
+    newTag: latest
+  - name: ghcr.io/your-org/resume-shortlister-frontend
+    newTag: latest
