@@ -15,6 +15,7 @@ const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
+  role: z.enum(['RECRUITER', 'APPLICANT']),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -30,14 +31,17 @@ export function RegisterPage() {
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role: 'RECRUITER',
+    },
   });
 
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     try {
-      await registerUser(data.fullName, data.email, data.password);
+      await registerUser(data.fullName, data.email, data.password, data.role);
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      navigate(data.role === 'APPLICANT' ? '/jobs' : '/dashboard');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Registration failed. Please try again.';
       toast.error(message);
@@ -117,6 +121,21 @@ export function RegisterPage() {
           >
             <Lock className="w-5 h-5 text-gray-400" aria-hidden="true" />
           </Input>
+
+          <div className="w-full">
+            <label className="label">Account Type <span className="text-red-500">*</span></label>
+            <div className="grid gap-2 sm:grid-cols-2 mt-1">
+              <label className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-primary-200 transition-colors">
+                <input type="radio" value="RECRUITER" {...register('role')} className="w-4 h-4 text-primary-600" />
+                <span className="text-sm text-gray-700">HR / Recruiter</span>
+              </label>
+              <label className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-primary-200 transition-colors">
+                <input type="radio" value="APPLICANT" {...register('role')} className="w-4 h-4 text-primary-600" />
+                <span className="text-sm text-gray-700">Job Applicant</span>
+              </label>
+            </div>
+            {errors.role && <p className="mt-1.5 text-sm text-red-600">{errors.role.message}</p>}
+          </div>
 
           <div className="flex items-start gap-2">
             <input type="checkbox" id="terms" required className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />

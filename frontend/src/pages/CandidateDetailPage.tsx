@@ -10,7 +10,7 @@ import { PageLoading } from '../components/ui/LoadingSpinner';
 import { formatCurrency, formatRelativeTime } from '../lib/utils';
 import toast from 'react-hot-toast';
 
-const STATUS_OPTIONS: Candidate['status'][] = ['NEW', 'SHORTLISTED', 'CONTACTED', 'INTERVIEWING', 'HIRED', 'REJECTED'];
+const STATUS_OPTIONS: Candidate['status'][] = ['NEW', 'SHORTLISTED', 'REVIEWED', 'CONTACTED', 'INTERVIEWING', 'HIRED', 'REJECTED'];
 
 export function CandidateDetailPage() {
   const { id } = useParams<{ id: string }>();

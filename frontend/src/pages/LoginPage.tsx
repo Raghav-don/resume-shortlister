@@ -32,7 +32,9 @@ export function LoginPage() {
     try {
       await login(data.email, data.password);
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      const userData = localStorage.getItem('user');
+      const roles = userData ? JSON.parse(userData).roles : [];
+      navigate(roles.includes('APPLICANT') && !roles.includes('RECRUITER') ? '/jobs' : '/dashboard');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Login failed. Please check your credentials.';
       toast.error(message);

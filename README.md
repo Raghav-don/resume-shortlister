@@ -6,7 +6,7 @@ A production-ready full-stack web application for recruiters to efficiently shor
 
 ### Prerequisites
 - **Docker** & **Docker Compose** (recommended)
-- **Java 21** + **Maven 3.9+** (for local backend development)
+- **Java 25 (LTS)** + **Maven 3.9+** (for local backend development)
 - **Node.js 20+** + **npm** (for local frontend development)
 
 ### One-Command Deployment (Docker)

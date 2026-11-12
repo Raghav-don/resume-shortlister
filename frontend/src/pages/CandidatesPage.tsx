@@ -17,6 +17,7 @@ const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'NEW', label: 'New' },
   { value: 'SHORTLISTED', label: 'Shortlisted' },
+  { value: 'REVIEWED', label: 'Partial Match' },
   { value: 'REJECTED', label: 'Rejected' },
   { value: 'CONTACTED', label: 'Contacted' },
   { value: 'INTERVIEWING', label: 'Interviewing' },

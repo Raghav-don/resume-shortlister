@@ -15,6 +15,7 @@ hs_err_pid*
 
 # Node / Frontend
 frontend/node_modules/
+node_modules/
 frontend/dist/
 frontend/build/
 frontend/.vite/

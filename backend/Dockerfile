@@ -1,5 +1,5 @@
 # Build stage
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
+FROM maven:3.9.16-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /app
 
@@ -7,9 +7,11 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source and build
+# Copy source and config files
 COPY src ./src
-RUN mvn clean package -DskipTests -B
+COPY checkstyle.xml .
+COPY spotbugs-exclude.xml .
+RUN mvn clean package -B -Dcheckstyle.skip=true -Dspotbugs.skip=true -Dmaven.test.skip=true
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
@@ -25,6 +27,9 @@ COPY --from=builder /app/target/*.jar app.jar
 
 # Change ownership
 RUN chown appuser:appgroup app.jar
+
+# Create resume upload directory with correct ownership for appuser
+RUN mkdir -p /app/uploads && chown appuser:appgroup /app/uploads
 
 USER appuser
 

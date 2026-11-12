@@ -42,9 +42,9 @@ spring:
       max-request-size: 10MB
 
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
+    host: ${SPRING_REDIS_HOST:${REDIS_HOST}}
+    port: ${SPRING_REDIS_PORT:${REDIS_PORT:6379}}
+    password: ${SPRING_REDIS_PASSWORD:${REDIS_PASSWORD:}}
     database: 0
     timeout: 2000ms
     lettuce:
@@ -68,6 +68,9 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
 
+  uploads:
+    resume-dir: ${RESUME_UPLOAD_DIR:./uploads/resumes}
+
 management:
   endpoints:
     web:
@@ -76,6 +79,11 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: false
   metrics:
     export:
       prometheus:

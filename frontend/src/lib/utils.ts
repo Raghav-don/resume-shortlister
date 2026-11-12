@@ -6,12 +6,28 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+  // Use the Indian locale for rupees so it renders as ₹ with Indian digit grouping (lakhs)
+  const locale = currency === 'INR' ? 'en-IN' : 'en-US';
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+export function formatExperience(job: {
+  minExperienceYears: number;
+  minExperienceMonths: number;
+  maxExperienceYears?: number;
+  maxExperienceMonths?: number;
+  candidateLevel: string;
+}): string {
+  const min = job.minExperienceYears;
+  const max = job.maxExperienceYears != null ? job.maxExperienceYears : null;
+  if (min === 0 && max === null) return 'Fresher';
+  if (max != null && max > min) return `${min}-${max} years`;
+  return `${min}+ years`;
 }
 
 export function formatDate(date: string | Date): string {

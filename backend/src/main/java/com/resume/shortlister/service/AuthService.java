@@ -45,7 +45,7 @@ public class AuthService {
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .roles(List.of(Recruiter.Role.RECRUITER))
+                .roles(List.of(request.getRole() != null ? request.getRole() : Recruiter.Role.RECRUITER))
                 .isActive(true)
                 .build();
 

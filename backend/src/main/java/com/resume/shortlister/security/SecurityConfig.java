@@ -1,11 +1,5 @@
 package com.resume.shortlister.security;
 
-import com.giffing.bucket4j.spring.boot.starter.config.cache.JCacheConfigManager;
-import com.giffing.bucket4j.spring.boot.starter.config.cache.MultiCacheResolver;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Bucket4j;
-import io.github.bucket4j.Refill;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -27,12 +21,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.time.Duration;
 import java.util.List;
 
 @Configuration
@@ -43,7 +35,6 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
-    private final RateLimitFilter rateLimitFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -52,12 +43,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/public/**", "/actuator/health", "/actuator/info", "/error", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/auth/**", "/public/**", "/actuator/health", "/actuator/info", "/error", "/swagger-ui/**", "/v3/api-docs/**", "/job-applications/resumes/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/candidates").permitAll() // Public candidate submission
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'"))
@@ -105,8 +95,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Only allow specific origins - no wildcards in production
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        // Allowed origins from env (comma-separated). No wildcards in production.
+        String allowedOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
+        List<String> origins = (allowedOrigins != null && !allowedOrigins.isBlank())
+            ? List.of(allowedOrigins.split("\\s*,\\s*"))
+            : List.of("http://localhost:5173", "http://localhost:3000");
+        config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
         config.setExposedHeaders(List.of("X-Total-Count", "X-Page-Count"));
@@ -116,27 +110,5 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
-    }
-
-    // Rate limiting buckets
-    @Bean
-    public Bucket authRateLimitBucket() {
-        return Bucket4j.builder()
-                .addLimit(Bandwidth.classic(5, Refill.greedy(5, Duration.ofMinutes(1)))) // 5 requests per minute for auth
-                .build();
-    }
-
-    @Bean
-    public Bucket apiRateLimitBucket() {
-        return Bucket4j.builder()
-                .addLimit(Bandwidth.classic(100, Refill.greedy(100, Duration.ofMinutes(1)))) // 100 requests per minute for API
-                .build();
-    }
-
-    @Bean
-    public Bucket publicRateLimitBucket() {
-        return Bucket4j.builder()
-                .addLimit(Bandwidth.classic(30, Refill.greedy(30, Duration.ofMinutes(1)))) // 30 requests per minute for public endpoints
-                .build();
     }
 }

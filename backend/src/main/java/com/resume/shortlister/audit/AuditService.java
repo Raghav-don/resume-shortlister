@@ -1,6 +1,5 @@
 package com.resume.shortlister.audit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +17,6 @@ import java.util.UUID;
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
-    private final ObjectMapper objectMapper;
 
     @Async("auditExecutor")
     @Transactional
@@ -36,7 +34,7 @@ public class AuditService {
                     .requestId(request != null ? request.getHeader("X-Request-ID") : null)
                     .success(success)
                     .errorMessage(errorMessage)
-                    .details(details != null ? objectMapper.writeValueAsString(details) : null)
+                    .details(details)
                     .build();
 
             auditLogRepository.save(auditLog);

@@ -1,0 +1,12 @@
+- [x] Backend: add resume file fields (technicalSkills, remotePreference, salaryExpectation, currency) to JobApplication domain + DTOs + mapper
+- [x] Backend: Flyway V7 migration for new job_application columns/skills table
+- [x] Backend: multipart resume upload in JobApplicationController + file storage + serve endpoint
+- [x] Backend: create Candidate record on job application so it reflects in recruiter's account
+- [x] Backend: permit /api/resumes/** in SecurityConfig; add uploads config to application.yml
+- [x] Backend: add resume_uploads volume to docker-compose.yml
+- [x] Frontend: api.ts multipart apply + new JobApplicationRequest fields
+- [x] Frontend: utils.ts formatCurrency (INR ₹/Indian numbering) + formatExperience helper
+- [x] Frontend: JobApplicationFormPage — file upload resume (PDF/DOCX) + skills/remote/salary/currency fields
+- [x] Frontend: JobsPage/JobDetailPage/ApplicantJobsPage — fix experience label & salary display/alignment
+- [x] TypeScript compiles cleanly
+- [x] Rebuild + restart stack, verify all URLs

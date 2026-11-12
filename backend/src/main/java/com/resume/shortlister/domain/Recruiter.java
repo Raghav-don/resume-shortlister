@@ -98,6 +98,6 @@ public class Recruiter implements UserDetails {
     }
 
     public enum Role {
-        RECRUITER, ADMIN
+        RECRUITER, ADMIN, APPLICANT
     }
 }

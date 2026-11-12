@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, LayoutDashboard, Users, FileText, BarChart2, Settings } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Menu, X, LayoutDashboard, Users, FileText, BarChart2, Settings, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { UserMenu } from '../components/ui/DropdownMenu';
 import { useAuth } from '../context/AuthContext';
 
-export function RecruiterLayout() {
+export function RecruiterLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,7 +13,8 @@ export function RecruiterLayout() {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Candidates', href: '/candidates', icon: Users },
-    { name: 'Applications', href: '/candidates?status=NEW', icon: FileText },
+    { name: 'Jobs', href: '/jobs', icon: Briefcase },
+    { name: 'Applications', href: '/applications', icon: FileText },
     { name: 'Analytics', href: '/analytics', icon: BarChart2 },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
@@ -60,22 +61,25 @@ export function RecruiterLayout() {
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" aria-label="Main navigation">
-            {navigation.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                )}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-                {item.name}
-              </NavLink>
-            ))}
+            {navigation.map((item) => {
+              const Icon = item.icon as React.ComponentType<any>;
+              return (
+                <NavLink
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) => cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary-50 text-primary-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  )}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                  {item.name}
+                </NavLink>
+              );
+            })}
           </nav>
 
           {/* User section */}
@@ -106,7 +110,7 @@ export function RecruiterLayout() {
 
         {/* Page content */}
         <main className="p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>

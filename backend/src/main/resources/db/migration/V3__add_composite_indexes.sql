@@ -7,8 +7,8 @@ CREATE INDEX idx_candidates_remote_status ON candidates(remote_preference, statu
 CREATE INDEX idx_candidates_salary_status ON candidates(salary_expectation, status);
 CREATE INDEX idx_candidates_created_status ON candidates(created_at DESC, status);
 
--- Composite index for skills filter (requires GIN index on array)
-CREATE INDEX idx_candidates_skills_gin ON candidates USING GIN (technical_skills);
+-- Index on candidate_skills for skills filter
+CREATE INDEX idx_candidate_skills_skill ON candidate_skills(skill);
 
 -- Covering index for common list query
 CREATE INDEX idx_candidates_list_covering ON candidates(status, created_at DESC)

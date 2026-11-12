@@ -3,8 +3,11 @@ package com.resume.shortlister.audit;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.JdbcTypeCode;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -57,13 +60,15 @@ public class AuditLog {
     private String errorMessage;
 
     @Column(name = "details", columnDefinition = "JSONB")
-    private String details;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, Object> details;
 
     public enum Action {
         LOGIN, LOGOUT, LOGIN_FAILED,
         CANDIDATE_CREATE, CANDIDATE_READ, CANDIDATE_UPDATE, CANDIDATE_DELETE,
         CANDIDATE_STATUS_CHANGE, CANDIDATE_EXPORT,
         RECRUITER_CREATE, RECRUITER_UPDATE, RECRUITER_DELETE,
-        PASSWORD_CHANGE, ROLE_CHANGE
+        PASSWORD_CHANGE, ROLE_CHANGE,
+        JOB_CREATE, JOB_READ, JOB_UPDATE, JOB_DELETE
     }
 }

@@ -111,6 +111,6 @@ public class Candidate {
     }
 
     public enum CandidateStatus {
-        NEW, SHORTLISTED, REJECTED, CONTACTED, INTERVIEWING, HIRED
+        NEW, SHORTLISTED, REVIEWED, REJECTED, CONTACTED, INTERVIEWING, HIRED
     }
 }
