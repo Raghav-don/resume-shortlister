@@ -59,17 +59,13 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers
-                        .contentSecurityPolicy(csp -> csp.policyDirectives("""
-                            default-src 'self';
-                            script-src 'self' 'unsafe-inline';
-                            style-src 'self' 'unsafe-inline';
-                            img-src 'self' data: https:;
-                            font-src 'self' data:;
-                            connect-src 'self' http://localhost:8080 ws://localhost:8080;
-                            object-src 'none';
-                            base-uri 'self';
-                            form-action 'self';
-                            """))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; "
+                                + "script-src 'self' 'unsafe-inline'; "
+                                + "style-src 'self' 'unsafe-inline'; "
+                                + "img-src 'self' data: https:; font-src 'self' data:; "
+                                + "connect-src 'self' http://localhost:8080 ws://localhost:8080; "
+                                + "object-src 'none'; base-uri 'self'; form-action 'self'"))
                         .frameOptions(frame -> frame.deny())
                         .xssProtection(xss -> xss.headerValue(
                                 XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
