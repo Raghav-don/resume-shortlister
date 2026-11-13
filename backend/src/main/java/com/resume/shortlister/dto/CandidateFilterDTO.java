@@ -1,7 +1,10 @@
 package com.resume.shortlister.dto;
 
 import com.resume.shortlister.domain.Candidate;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -16,12 +19,16 @@ public class CandidateFilterDTO {
     private Integer maxSalary;
     private Candidate.CandidateStatus status;
     private int page = 0;
-    private int size = 20;
+    private int size = DEFAULT_PAGE_SIZE;
     private String sortBy = "createdAt";
     private String sortDir = "desc";
 
+    private static final int DEFAULT_PAGE_SIZE = 20;
+
     public List<String> getSkillList() {
-        if (skills == null || skills.isBlank()) return List.of();
+        if (skills == null || skills.isBlank()) {
+            return List.of();
+        }
         return List.of(skills.split("\\s*,\\s*"));
     }
 }

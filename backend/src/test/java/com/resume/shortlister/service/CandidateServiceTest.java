@@ -1,5 +1,6 @@
 package com.resume.shortlister.service;
 
+import com.resume.shortlister.audit.AuditLogParams;
 import com.resume.shortlister.audit.AuditService;
 import com.resume.shortlister.domain.Candidate;
 import com.resume.shortlister.dto.CandidateFilterDTO;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -47,10 +49,10 @@ class CandidateServiceTest {
     void setUp() {
         candidateMapper = Mappers.getMapper(CandidateMapper.class);
         candidateService = new CandidateService(candidateRepository, candidateMapper, auditService);
-        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
-        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(httpRequest.getHeader("User-Agent")).thenReturn("Test Agent");
+        lenient().when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+        lenient().when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
+        lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        lenient().when(httpRequest.getHeader("User-Agent")).thenReturn("Test Agent");
     }
 
     @Test
@@ -67,9 +69,9 @@ class CandidateServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getEmail()).isEqualTo(request.getEmail());
         assertThat(response.getFullName()).isEqualTo(request.getFullName());
-        assertThat(response.getStatus()).isEqualTo("NEW");
+        assertThat(response.getStatus()).isEqualTo(Candidate.CandidateStatus.NEW);
         verify(candidateRepository).save(any(Candidate.class));
-        verify(auditService).log(any(), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -83,7 +85,7 @@ class CandidateServiceTest {
                 .hasMessageContaining("already exists");
 
         verify(candidateRepository, never()).save(any());
-        verify(auditService).log(any(), anyString(), any(), anyString(), any(), any(), eq(false), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -97,8 +99,8 @@ class CandidateServiceTest {
         CandidateResponseDTO response = candidateService.getById(id, "recruiter@example.com", httpRequest);
 
         assertThat(response).isNotNull();
-        assertThat(response.getId()).isEqualTo(id.toString());
-        verify(auditService).log(any(), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        assertThat(response.getId()).isEqualTo(id);
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -118,7 +120,7 @@ class CandidateServiceTest {
         candidate.setId(UUID.randomUUID());
 
         Page<Candidate> page = new PageImpl<>(List.of(candidate), PageRequest.of(0, 20), 1);
-        when(candidateRepository.findWithFilters(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(candidateRepository.findWithFilters(any(CandidateFilterDTO.class), any(Pageable.class)))
                 .thenReturn(page);
 
         CandidateFilterDTO filter = CandidateFilterDTO.builder()
@@ -140,7 +142,7 @@ class CandidateServiceTest {
 
         assertThat(response.getContent()).hasSize(1);
         assertThat(response.getTotalElements()).isEqualTo(1);
-        verify(auditService).log(any(), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -156,9 +158,9 @@ class CandidateServiceTest {
         CandidateResponseDTO response = candidateService.updateStatus(
                 id, Candidate.CandidateStatus.SHORTLISTED, "Great candidate", "recruiter@example.com", httpRequest);
 
-        assertThat(response.getStatus()).isEqualTo("SHORTLISTED");
+        assertThat(response.getStatus()).isEqualTo(Candidate.CandidateStatus.SHORTLISTED);
         assertThat(response.getRecruiterNotes()).isEqualTo("Great candidate");
-        verify(auditService).log(any(), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -167,20 +169,18 @@ class CandidateServiceTest {
         Candidate candidate = createCandidateEntity();
         candidate.setId(id);
 
-        when(candidateRepository.existsById(id)).thenReturn(true);
         when(candidateRepository.findById(id)).thenReturn(Optional.of(candidate));
 
         candidateService.delete(id, "admin@example.com", httpRequest);
 
         verify(candidateRepository).deleteById(id);
-        verify(auditService).log(any(), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
     void shouldThrowExceptionWhenDeletingNonExistentCandidate() {
         UUID id = UUID.randomUUID();
-
-        when(candidateRepository.existsById(id)).thenReturn(false);
+        when(candidateRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> candidateService.delete(id, "admin@example.com", httpRequest))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -194,7 +194,7 @@ class CandidateServiceTest {
         long count = candidateService.countByStatus(Candidate.CandidateStatus.NEW, "recruiter@example.com", httpRequest);
 
         assertThat(count).isEqualTo(5L);
-        verify(auditService).log(any(), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     private CandidateRequestDTO createValidRequest() {

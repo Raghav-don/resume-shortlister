@@ -1,6 +1,5 @@
 package com.resume.shortlister.security;
 
-import com.resume.shortlister.domain.Recruiter;
 import com.resume.shortlister.repository.RecruiterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;

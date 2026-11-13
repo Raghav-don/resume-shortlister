@@ -12,6 +12,10 @@ import java.util.concurrent.ThreadPoolExecutor;
 @EnableAsync
 public class AsyncConfig {
 
+    private static final int TASK_CORE_POOL_SIZE = 4;
+    private static final int TASK_MAX_POOL_SIZE = 20;
+    private static final int TASK_QUEUE_CAPACITY = 200;
+
     @Bean(name = "auditExecutor")
     public Executor auditExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -27,9 +31,9 @@ public class AsyncConfig {
     @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(4);
-        executor.setMaxPoolSize(20);
-        executor.setQueueCapacity(200);
+        executor.setCorePoolSize(TASK_CORE_POOL_SIZE);
+        executor.setMaxPoolSize(TASK_MAX_POOL_SIZE);
+        executor.setQueueCapacity(TASK_QUEUE_CAPACITY);
         executor.setThreadNamePrefix("task-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();

@@ -1,6 +1,7 @@
 package com.resume.shortlister.service;
 
 import com.resume.shortlister.audit.AuditLog;
+import com.resume.shortlister.audit.AuditLogParams;
 import com.resume.shortlister.audit.AuditService;
 import com.resume.shortlister.domain.Recruiter;
 import com.resume.shortlister.dto.AuthResponse;
@@ -35,9 +36,15 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request, HttpServletRequest httpRequest) {
         if (recruiterRepository.existsByEmail(request.getEmail())) {
-            auditService.log(AuditLog.Action.RECRUITER_CREATE, request.getEmail(), null, "Recruiter",
-                    null, httpRequest, false, "Email already registered",
-                    Map.of("email", request.getEmail()));
+            auditService.log(AuditLogParams.builder()
+                    .action(AuditLog.Action.RECRUITER_CREATE)
+                    .userEmail(request.getEmail())
+                    .entityType("Recruiter")
+                    .request(httpRequest)
+                    .success(false)
+                    .errorMessage("Email already registered")
+                    .details(Map.of("email", request.getEmail()))
+                    .build());
             throw new IllegalArgumentException("Email already registered: " + request.getEmail());
         }
 
@@ -51,9 +58,16 @@ public class AuthService {
 
         recruiter = recruiterRepository.save(recruiter);
 
-        auditService.log(AuditLog.Action.RECRUITER_CREATE, recruiter.getEmail(), recruiter.getId(), "Recruiter",
-                recruiter.getId(), httpRequest, true, null,
-                Map.of("email", recruiter.getEmail(), "roles", recruiter.getRoles()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.RECRUITER_CREATE)
+                .userEmail(recruiter.getEmail())
+                .userId(recruiter.getId())
+                .entityType("Recruiter")
+                .entityId(recruiter.getId())
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("email", recruiter.getEmail(), "roles", recruiter.getRoles()))
+                .build());
 
         return buildAuthResponse(recruiter);
     }
@@ -67,15 +81,28 @@ public class AuthService {
             Recruiter recruiter = recruiterRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new IllegalArgumentException("Recruiter not found"));
 
-            auditService.log(AuditLog.Action.LOGIN, recruiter.getEmail(), recruiter.getId(), "Recruiter",
-                    recruiter.getId(), httpRequest, true, null,
-                    Map.of("email", recruiter.getEmail()));
+            auditService.log(AuditLogParams.builder()
+                    .action(AuditLog.Action.LOGIN)
+                    .userEmail(recruiter.getEmail())
+                    .userId(recruiter.getId())
+                    .entityType("Recruiter")
+                    .entityId(recruiter.getId())
+                    .request(httpRequest)
+                    .success(true)
+                    .details(Map.of("email", recruiter.getEmail()))
+                    .build());
 
             return buildAuthResponse(recruiter);
         } catch (BadCredentialsException e) {
-            auditService.log(AuditLog.Action.LOGIN_FAILED, request.getEmail(), null, "Recruiter",
-                    null, httpRequest, false, "Invalid credentials",
-                    Map.of("email", request.getEmail()));
+            auditService.log(AuditLogParams.builder()
+                    .action(AuditLog.Action.LOGIN_FAILED)
+                    .userEmail(request.getEmail())
+                    .entityType("Recruiter")
+                    .request(httpRequest)
+                    .success(false)
+                    .errorMessage("Invalid credentials")
+                    .details(Map.of("email", request.getEmail()))
+                    .build());
             throw e;
         }
     }

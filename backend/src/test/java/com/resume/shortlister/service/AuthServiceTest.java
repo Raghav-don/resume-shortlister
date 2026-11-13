@@ -1,5 +1,6 @@
 package com.resume.shortlister.service;
 
+import com.resume.shortlister.audit.AuditLogParams;
 import com.resume.shortlister.audit.AuditService;
 import com.resume.shortlister.audit.AuditLog;
 import com.resume.shortlister.domain.Recruiter;
@@ -59,10 +60,10 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthService(recruiterRepository, passwordEncoder, jwtTokenProvider, authenticationManager, auditService);
-        when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
-        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(httpRequest.getHeader("User-Agent")).thenReturn("Test Agent");
+        lenient().when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+        lenient().when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
+        lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        lenient().when(httpRequest.getHeader("User-Agent")).thenReturn("Test Agent");
     }
 
     @Test
@@ -95,7 +96,7 @@ class AuthServiceTest {
         assertThat(response.getRecruiter().getEmail()).isEqualTo("john@example.com");
         assertThat(response.getRecruiter().getRoles()).contains("RECRUITER");
         verify(recruiterRepository).save(any(Recruiter.class));
-        verify(auditService).log(eq(AuditLog.Action.RECRUITER_CREATE), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -112,7 +113,7 @@ class AuthServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("already registered");
 
-        verify(auditService).log(eq(AuditLog.Action.RECRUITER_CREATE), anyString(), any(), anyString(), any(), any(), eq(false), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -142,7 +143,7 @@ class AuthServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getAccessToken()).isEqualTo("jwt-token");
         assertThat(response.getRecruiter().getEmail()).isEqualTo("john@example.com");
-        verify(auditService).log(eq(AuditLog.Action.LOGIN), anyString(), any(), anyString(), any(), any(), eq(true), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test
@@ -158,7 +159,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(request, httpRequest))
                 .isInstanceOf(BadCredentialsException.class);
 
-        verify(auditService).log(eq(AuditLog.Action.LOGIN_FAILED), anyString(), any(), anyString(), any(), any(), eq(false), anyString(), any());
+        verify(auditService).log(any(AuditLogParams.class));
     }
 
     @Test

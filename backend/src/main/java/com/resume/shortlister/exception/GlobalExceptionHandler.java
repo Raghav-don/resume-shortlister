@@ -27,6 +27,8 @@ import java.util.UUID;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    private static final int REQUEST_ID_LENGTH = 8;
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -34,7 +36,7 @@ public class GlobalExceptionHandler {
             errors.put(error.getField(), error.getDefaultMessage());
         }
 
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Validation failed: {}", requestId, errors);
 
         return ResponseEntity.badRequest()
@@ -55,7 +57,7 @@ public class GlobalExceptionHandler {
             errors.put(v.getPropertyPath().toString(), v.getMessage())
         );
 
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Constraint violation: {}", requestId, errors);
 
         return ResponseEntity.badRequest()
@@ -71,7 +73,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Entity not found: {}", requestId, ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -86,7 +88,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Illegal argument: {}", requestId, ex.getMessage());
 
         return ResponseEntity.badRequest()
@@ -101,7 +103,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         String message = ex.getMostSpecificCause() != null
             ? ex.getMostSpecificCause().getMessage()
             : ex.getMessage();
@@ -126,7 +128,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Authentication failed: {}", requestId, ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -141,7 +143,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Access denied: {}", requestId, ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -156,7 +158,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Malformed request: {}", requestId, ex.getMessage());
 
         return ResponseEntity.badRequest()
@@ -171,7 +173,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Missing parameter: {}", requestId, ex.getParameterName());
 
         return ResponseEntity.badRequest()
@@ -186,7 +188,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Type mismatch: {} should be {}", requestId, ex.getName(), ex.getRequiredType().getSimpleName());
 
         return ResponseEntity.badRequest()
@@ -194,14 +196,15 @@ public class GlobalExceptionHandler {
                         .timestamp(Instant.now())
                         .status(HttpStatus.BAD_REQUEST.value())
                         .error("Bad Request")
-                        .message("Parameter '" + ex.getName() + "' must be of type " + ex.getRequiredType().getSimpleName())
+                        .message("Parameter '" + ex.getName() + "' must be of type "
+                                + ex.getRequiredType().getSimpleName())
                         .requestId(requestId)
                         .build());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.warn("[{}] Resource not found: {}", requestId, ex.getResourcePath());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -216,7 +219,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        String requestId = UUID.randomUUID().toString().substring(0, REQUEST_ID_LENGTH);
         log.error("[{}] Unhandled exception: {}", requestId, ex.getMessage(), ex);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

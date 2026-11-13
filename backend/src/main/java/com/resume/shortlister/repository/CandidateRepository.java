@@ -1,6 +1,7 @@
 package com.resume.shortlister.repository;
 
 import com.resume.shortlister.domain.Candidate;
+import com.resume.shortlister.dto.CandidateFilterDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,28 +22,23 @@ public interface CandidateRepository extends JpaRepository<Candidate, UUID> {
 
     @Query("""
         SELECT c FROM Candidate c
-        WHERE (:minExperience IS NULL OR c.yearsOfExperience >= :minExperience)
-        AND (:maxExperience IS NULL OR c.yearsOfExperience <= :maxExperience)
-        AND (:skills IS NULL OR :skills = '' OR SIZE(c.technicalSkills) > 0 AND (
-            SELECT COUNT(s) FROM Candidate c2 JOIN c2.technicalSkills s WHERE c2.id = c.id AND s IN :skillList
+        WHERE (:#{#filter.minExperience} IS NULL OR c.yearsOfExperience >= :#{#filter.minExperience})
+        AND (:#{#filter.maxExperience} IS NULL OR c.yearsOfExperience <= :#{#filter.maxExperience})
+        AND (:#{#filter.skills} IS NULL OR :#{#filter.skills} = '' OR SIZE(c.technicalSkills) > 0 AND (
+            SELECT COUNT(s) FROM Candidate c2 JOIN c2.technicalSkills s
+            WHERE c2.id = c.id AND s IN :#{#filter.skillList}
         ) > 0)
-        AND (:location IS NULL OR :location = '' OR LOWER(c.location) LIKE LOWER(CONCAT('%', :location, '%')))
-        AND (:remotePreference IS NULL OR c.remotePreference = :remotePreference)
-        AND (:noticePeriod IS NULL OR :noticePeriod = '' OR c.noticePeriod = :noticePeriod)
-        AND (:maxSalary IS NULL OR c.salaryExpectation <= :maxSalary)
-        AND (:status IS NULL OR c.status = :status)
+        AND (:#{#filter.location} IS NULL OR :#{#filter.location} = '' OR LOWER(c.location) LIKE
+            LOWER(CONCAT('%', :#{#filter.location}, '%')))
+        AND (:#{#filter.remotePreference} IS NULL OR c.remotePreference = :#{#filter.remotePreference})
+        AND (:#{#filter.noticePeriod} IS NULL OR :#{#filter.noticePeriod} = '' OR c.noticePeriod =
+            :#{#filter.noticePeriod})
+        AND (:#{#filter.maxSalary} IS NULL OR c.salaryExpectation <= :#{#filter.maxSalary})
+        AND (:#{#filter.status} IS NULL OR c.status = :#{#filter.status})
         ORDER BY c.createdAt DESC
         """)
     Page<Candidate> findWithFilters(
-            @Param("minExperience") Integer minExperience,
-            @Param("maxExperience") Integer maxExperience,
-            @Param("skills") String skills,
-            @Param("skillList") List<String> skillList,
-            @Param("location") String location,
-            @Param("remotePreference") Candidate.RemotePreference remotePreference,
-            @Param("noticePeriod") String noticePeriod,
-            @Param("maxSalary") Integer maxSalary,
-            @Param("status") Candidate.CandidateStatus status,
+            @Param("filter") CandidateFilterDTO filter,
             Pageable pageable
     );
 

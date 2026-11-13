@@ -1,7 +1,10 @@
 package com.resume.shortlister.dto;
 
 import com.resume.shortlister.domain.JobApplication;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;

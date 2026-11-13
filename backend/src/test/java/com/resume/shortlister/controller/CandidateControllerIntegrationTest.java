@@ -18,7 +18,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Base64;
 import java.util.List;
+import java.security.SecureRandom;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.*;
@@ -31,6 +33,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class CandidateControllerIntegrationTest {
 
+    private static final String TEST_JWT_SECRET = Base64.getEncoder()
+            .encodeToString(new SecureRandom().generateSeed(64));
+
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("resume_shortlister")
@@ -42,7 +47,7 @@ class CandidateControllerIntegrationTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("app.jwt.secret", () -> "bXlTdXBlclNlY3JldEtleUZvckpXVFRva2VuR2VuZXJhdGlvbkFuZFZhbGlkYXRpb24xMjM0NTY3ODkw");
+        registry.add("app.jwt.secret", () -> TEST_JWT_SECRET);
     }
 
     @Autowired

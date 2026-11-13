@@ -74,14 +74,14 @@ class CandidateMapperTest {
 
         CandidateResponseDTO response = mapper.toResponseDTO(entity);
 
-        assertThat(response.getId()).isEqualTo(id.toString());
+        assertThat(response.getId()).isEqualTo(id);
         assertThat(response.getFullName()).isEqualTo("John Doe");
         assertThat(response.getEmail()).isEqualTo("john@example.com");
         assertThat(response.getPhone()).isEqualTo("+1-555-0123");
         assertThat(response.getYearsOfExperience()).isEqualTo(5);
         assertThat(response.getTechnicalSkills()).containsExactly("React", "TypeScript");
         assertThat(response.getLocation()).isEqualTo("San Francisco, CA");
-        assertThat(response.getRemotePreference()).isEqualTo("REMOTE");
+        assertThat(response.getRemotePreference()).isEqualTo(Candidate.RemotePreference.REMOTE);
         assertThat(response.getNoticePeriod()).isEqualTo("30 days");
         assertThat(response.getSalaryExpectation()).isEqualTo(150000);
         assertThat(response.getCurrency()).isEqualTo("USD");
@@ -89,7 +89,7 @@ class CandidateMapperTest {
         assertThat(response.getPortfolioUrl()).isEqualTo("https://johndoe.dev");
         assertThat(response.getLinkedinUrl()).isEqualTo("https://linkedin.com/in/johndoe");
         assertThat(response.getGithubUrl()).isEqualTo("https://github.com/johndoe");
-        assertThat(response.getStatus()).isEqualTo("SHORTLISTED");
+        assertThat(response.getStatus()).isEqualTo(Candidate.CandidateStatus.SHORTLISTED);
         assertThat(response.getRecruiterNotes()).isEqualTo("Great candidate");
     }
 }

@@ -1,6 +1,5 @@
 package com.resume.shortlister.security;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +32,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final int BCRYPT_COST = 12;
+    private static final long CORS_MAX_AGE_SECONDS = 3600L;
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
+    private final RequestIdFilter requestIdFilter;
     private final CustomUserDetailsService userDetailsService;
 
     @Bean
@@ -43,31 +47,52 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/public/**", "/actuator/health", "/actuator/info", "/error", "/swagger-ui/**", "/v3/api-docs/**", "/job-applications/resumes/**").permitAll()
+                        .requestMatchers(
+                                "/auth/**", "/public/**", "/actuator/health", "/actuator/info",
+                                "/error", "/swagger-ui/**", "/v3/api-docs/**", "/job-applications/resumes/**"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/candidates").permitAll() // Public candidate submission
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(requestIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers
-                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'"))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("""
+                            default-src 'self';
+                            script-src 'self' 'unsafe-inline';
+                            style-src 'self' 'unsafe-inline';
+                            img-src 'self' data: https:;
+                            font-src 'self' data:;
+                            connect-src 'self' http://localhost:8080 ws://localhost:8080;
+                            object-src 'none';
+                            base-uri 'self';
+                            form-action 'self';
+                            """))
                         .frameOptions(frame -> frame.deny())
-                        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .xssProtection(xss -> xss.headerValue(
+                                XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        .referrerPolicy(referrer -> referrer.policy(
+                                ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                         .addHeaderWriter(new StaticHeadersWriter("X-Content-Type-Options", "nosniff"))
-                        .addHeaderWriter(new StaticHeadersWriter("X-Permitted-Cross-Domain-Policies", "none"))
-                        .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "geolocation=(), microphone=(), camera=()"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "X-Permitted-Cross-Domain-Policies", "none"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "Permissions-Policy", "geolocation=(), microphone=(), camera=()"))
                 )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpStatus.UNAUTHORIZED.value());
                             response.setContentType("application/json");
-                            response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
+                            response.getWriter().write("""
+                                    {"error":"Unauthorized","message":"Authentication required"}""");
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpStatus.FORBIDDEN.value());
                             response.setContentType("application/json");
-                            response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"Insufficient permissions\"}");
+                            response.getWriter().write("""
+                                    {"error":"Forbidden","message":"Insufficient permissions"}""");
                         })
                 );
 
@@ -84,7 +109,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
+        return new BCryptPasswordEncoder(BCRYPT_COST);
     }
 
     @Bean
@@ -105,7 +130,7 @@ public class SecurityConfig {
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
         config.setExposedHeaders(List.of("X-Total-Count", "X-Page-Count"));
         config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
+        config.setMaxAge(CORS_MAX_AGE_SECONDS);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

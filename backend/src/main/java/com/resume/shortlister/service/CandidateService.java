@@ -1,6 +1,7 @@
 package com.resume.shortlister.service;
 
 import com.resume.shortlister.audit.AuditLog;
+import com.resume.shortlister.audit.AuditLogParams;
 import com.resume.shortlister.audit.AuditService;
 import com.resume.shortlister.domain.Candidate;
 import com.resume.shortlister.dto.CandidateFilterDTO;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -36,18 +38,30 @@ public class CandidateService {
     @CacheEvict(value = "stats", allEntries = true)
     public CandidateResponseDTO create(CandidateRequestDTO request, String createdBy, HttpServletRequest httpRequest) {
         if (candidateRepository.existsByEmail(request.getEmail())) {
-            auditService.log(AuditLog.Action.CANDIDATE_CREATE, createdBy, null, "Candidate",
-                    null, httpRequest, false, "Email already exists",
-                    Map.of("email", request.getEmail()));
+            auditService.log(AuditLogParams.builder()
+                    .action(AuditLog.Action.CANDIDATE_CREATE)
+                    .userEmail(createdBy)
+                    .entityType("Candidate")
+                    .request(httpRequest)
+                    .success(false)
+                    .errorMessage("Email already exists")
+                    .details(Map.of("email", request.getEmail()))
+                    .build());
             throw new IllegalArgumentException("Candidate with email " + request.getEmail() + " already exists");
         }
         Candidate candidate = candidateMapper.toEntity(request);
         candidate.setCreatedBy(createdBy);
         candidate = candidateRepository.save(candidate);
 
-        auditService.log(AuditLog.Action.CANDIDATE_CREATE, createdBy, null, "Candidate",
-                candidate.getId(), httpRequest, true, null,
-                Map.of("email", candidate.getEmail(), "name", candidate.getFullName()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.CANDIDATE_CREATE)
+                .userEmail(createdBy)
+                .entityType("Candidate")
+                .entityId(candidate.getId())
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("email", candidate.getEmail(), "name", candidate.getFullName()))
+                .build());
 
         return candidateMapper.toResponseDTO(candidate);
     }
@@ -56,39 +70,48 @@ public class CandidateService {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Candidate not found: " + id));
 
-        auditService.log(AuditLog.Action.CANDIDATE_READ, userEmail, null, "Candidate",
-                id, httpRequest, true, null,
-                Map.of("email", candidate.getEmail()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.CANDIDATE_READ)
+                .userEmail(userEmail)
+                .entityType("Candidate")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("email", candidate.getEmail()))
+                .build());
 
         return candidateMapper.toResponseDTO(candidate);
     }
 
-    public Page<CandidateResponseDTO> findWithFilters(CandidateFilterDTO filter, String userEmail, HttpServletRequest httpRequest) {
+    public Page<CandidateResponseDTO> findWithFilters(CandidateFilterDTO filter,
+                                                      String userEmail,
+                                                      HttpServletRequest httpRequest) {
         Pageable pageable = buildPageable(filter);
-        Page<Candidate> candidates = candidateRepository.findWithFilters(
-                filter.getMinExperience(),
-                filter.getMaxExperience(),
-                filter.getSkills(),
-                filter.getSkillList(),
-                filter.getLocation(),
-                filter.getRemotePreference(),
-                filter.getNoticePeriod(),
-                filter.getMaxSalary(),
-                filter.getStatus(),
-                pageable
-        );
+        Page<Candidate> candidates = candidateRepository.findWithFilters(filter, pageable);
 
-        auditService.log(AuditLog.Action.CANDIDATE_READ, userEmail, null, "Candidate",
-                null, httpRequest, true, null,
-                Map.of("filters", filter, "resultCount", candidates.getTotalElements()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.CANDIDATE_READ)
+                .userEmail(userEmail)
+                .entityType("Candidate")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("filters", filter, "resultCount", candidates.getTotalElements()))
+                .build());
 
         return candidates.map(candidateMapper::toResponseDTO);
     }
 
-    public List<CandidateResponseDTO> getAllByStatus(Candidate.CandidateStatus status, String userEmail, HttpServletRequest httpRequest) {
-        auditService.log(AuditLog.Action.CANDIDATE_READ, userEmail, null, "Candidate",
-                null, httpRequest, true, null,
-                Map.of("status", status.name()));
+    public List<CandidateResponseDTO> getAllByStatus(Candidate.CandidateStatus status,
+                                                     String userEmail,
+                                                     HttpServletRequest httpRequest) {
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.CANDIDATE_READ)
+                .userEmail(userEmail)
+                .entityType("Candidate")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("status", status.name()))
+                .build());
 
         return candidateRepository.findByStatus(status).stream()
                 .map(candidateMapper::toResponseDTO)
@@ -97,7 +120,9 @@ public class CandidateService {
 
     @Transactional
     @CacheEvict(value = "stats", allEntries = true)
-    public CandidateResponseDTO updateStatus(UUID id, Candidate.CandidateStatus status, String recruiterNotes, String updatedBy, HttpServletRequest httpRequest) {
+    public CandidateResponseDTO updateStatus(UUID id, Candidate.CandidateStatus status,
+                                             String recruiterNotes, String updatedBy,
+                                             HttpServletRequest httpRequest) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Candidate not found: " + id));
 
@@ -109,9 +134,15 @@ public class CandidateService {
         candidate.setUpdatedBy(updatedBy);
         candidate = candidateRepository.save(candidate);
 
-        auditService.log(AuditLog.Action.CANDIDATE_STATUS_CHANGE, updatedBy, null, "Candidate",
-                id, httpRequest, true, null,
-                Map.of("oldStatus", oldStatus.name(), "newStatus", status.name(), "notes", recruiterNotes));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.CANDIDATE_STATUS_CHANGE)
+                .userEmail(updatedBy)
+                .entityType("Candidate")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("oldStatus", oldStatus.name(), "newStatus", status.name(), "notes", recruiterNotes))
+                .build());
 
         return candidateMapper.toResponseDTO(candidate);
     }
@@ -125,22 +156,46 @@ public class CandidateService {
         String email = candidate.getEmail();
         candidateRepository.deleteById(id);
 
-        auditService.log(AuditLog.Action.CANDIDATE_DELETE, deletedBy, null, "Candidate",
-                id, httpRequest, true, null,
-                Map.of("email", email));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.CANDIDATE_DELETE)
+                .userEmail(deletedBy)
+                .entityType("Candidate")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("email", email))
+                .build());
     }
 
     @Cacheable(value = "stats", key = "'countByStatus:' + #status")
     public long countByStatus(Candidate.CandidateStatus status, String userEmail, HttpServletRequest httpRequest) {
-        auditService.log(AuditLog.Action.CANDIDATE_READ, userEmail, null, "Candidate",
-                null, httpRequest, true, null,
-                Map.of("action", "countByStatus", "status", status.name()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.CANDIDATE_READ)
+                .userEmail(userEmail)
+                .entityType("Candidate")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("action", "countByStatus", "status", status.name()))
+                .build());
 
         return candidateRepository.countByStatus(status);
     }
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "createdAt", "updatedAt", "fullName", "email", "yearsOfExperience",
+            "salaryExpectation", "location", "status", "remotePreference"
+    );
+
     private Pageable buildPageable(CandidateFilterDTO filter) {
-        Sort sort = Sort.by(Sort.Direction.fromString(filter.getSortDir()), filter.getSortBy());
+        String sortBy = filter.getSortBy();
+        if (sortBy == null || !ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            sortBy = "createdAt";
+        }
+        String sortDir = filter.getSortDir();
+        if (!"asc".equalsIgnoreCase(sortDir) && !"desc".equalsIgnoreCase(sortDir)) {
+            sortDir = "desc";
+        }
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
         return PageRequest.of(filter.getPage(), filter.getSize(), sort);
     }
 }

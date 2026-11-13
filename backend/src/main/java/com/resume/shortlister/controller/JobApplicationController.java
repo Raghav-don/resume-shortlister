@@ -21,7 +21,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -55,8 +63,10 @@ public class JobApplicationController {
     @PreAuthorize("hasRole('APPLICANT')")
     @Operation(summary = "Apply to a job (applicants only)")
     public ResponseEntity<JobApplicationResponse> apply(
-            @Parameter(description = "Application data as JSON") @RequestPart("request") @Valid JobApplicationRequest request,
-            @Parameter(description = "Resume file (PDF or DOCX)") @RequestPart(value = "resume", required = false) MultipartFile resume,
+            @Parameter(description = "Application data as JSON")
+            @RequestPart("request") @Valid JobApplicationRequest request,
+            @Parameter(description = "Resume file (PDF or DOCX)")
+            @RequestPart(value = "resume", required = false) MultipartFile resume,
             Authentication authentication,
             HttpServletRequest httpRequest) {
         if (resume != null && !resume.isEmpty()) {
@@ -69,9 +79,15 @@ public class JobApplicationController {
     }
 
     @GetMapping("/resumes/{filename:.+}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Serve an uploaded resume file")
     public ResponseEntity<Resource> getResume(@PathVariable String filename) throws MalformedURLException {
-        Path file = Paths.get(resumeUploadDir).resolve(StringUtils.cleanPath(filename)).normalize();
+        Path uploadDir = Paths.get(resumeUploadDir).toAbsolutePath().normalize();
+        Path file = uploadDir.resolve(StringUtils.cleanPath(filename)).normalize();
+        // Ensure the resolved path is still within the upload directory (path traversal protection)
+        if (!file.startsWith(uploadDir)) {
+            return ResponseEntity.notFound().build();
+        }
         Resource resource = new UrlResource(file.toUri());
         if (!resource.exists() || !resource.isReadable()) {
             return ResponseEntity.notFound().build();

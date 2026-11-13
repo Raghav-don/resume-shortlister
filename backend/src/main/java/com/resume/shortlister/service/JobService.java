@@ -1,8 +1,10 @@
 package com.resume.shortlister.service;
 
 import com.resume.shortlister.audit.AuditLog;
+import com.resume.shortlister.audit.AuditLogParams;
 import com.resume.shortlister.audit.AuditService;
 import com.resume.shortlister.domain.Job;
+import com.resume.shortlister.dto.JobFilterDTO;
 import com.resume.shortlister.dto.JobRequestDTO;
 import com.resume.shortlister.dto.JobResponseDTO;
 import com.resume.shortlister.mapper.JobMapper;
@@ -18,10 +20,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -37,9 +39,15 @@ public class JobService {
     @CacheEvict(value = "jobs", allEntries = true)
     public JobResponseDTO create(JobRequestDTO request, String postedBy, HttpServletRequest httpRequest) {
         if (jobRepository.existsByTitleAndPostedBy(request.getTitle(), postedBy)) {
-            auditService.log(AuditLog.Action.JOB_CREATE, postedBy, null, "Job",
-                    null, httpRequest, false, "Job title already exists for this recruiter",
-                    Map.of("title", request.getTitle()));
+            auditService.log(AuditLogParams.builder()
+                    .action(AuditLog.Action.JOB_CREATE)
+                    .userEmail(postedBy)
+                    .entityType("Job")
+                    .request(httpRequest)
+                    .success(false)
+                    .errorMessage("Job title already exists for this recruiter")
+                    .details(Map.of("title", request.getTitle()))
+                    .build());
             throw new IllegalArgumentException("Job with title '" + request.getTitle() + "' already exists");
         }
 
@@ -47,9 +55,16 @@ public class JobService {
         job.setPostedBy(postedBy);
         job = jobRepository.save(job);
 
-        auditService.log(AuditLog.Action.JOB_CREATE, postedBy, job.getId(), "Job",
-                job.getId(), httpRequest, true, null,
-                Map.of("title", job.getTitle(), "status", job.getStatus()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_CREATE)
+                .userEmail(postedBy)
+                .userId(job.getId())
+                .entityType("Job")
+                .entityId(job.getId())
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("title", job.getTitle(), "status", job.getStatus()))
+                .build());
 
         return jobMapper.toResponseDTO(job);
     }
@@ -58,34 +73,46 @@ public class JobService {
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + id));
 
-        auditService.log(AuditLog.Action.JOB_READ, userEmail, null, "Job",
-                id, httpRequest, true, null,
-                Map.of("title", job.getTitle()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userEmail(userEmail)
+                .entityType("Job")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("title", job.getTitle()))
+                .build());
 
         return jobMapper.toResponseDTO(job);
     }
 
-    public Page<JobResponseDTO> findWithFilters(String title, Job.JobStatus status, Job.CandidateLevel candidateLevel,
-                                                Job.EmploymentType employmentType, Job.RemoteWorkMode workMode,
-                                                LocalDate applicationDeadline,
-                                                int page, int size, String sortBy, String sortDir,
-                                                String userEmail, HttpServletRequest httpRequest) {
-        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+    public Page<JobResponseDTO> findWithFilters(JobFilterDTO filter, String userEmail,
+                                                HttpServletRequest httpRequest) {
+        Pageable pageable = buildPageable(filter.getPage(), filter.getSize(), filter.getSortBy(),
+                filter.getSortDir());
         Page<Job> jobs = jobRepository.findWithFilters(
-                title, status, candidateLevel, employmentType, workMode, applicationDeadline, pageable
+                filter.getTitle(), filter.getStatus(), filter.getCandidateLevel(),
+                filter.getEmploymentType(), filter.getWorkMode(), filter.getApplicationDeadline(),
+                pageable
         );
 
         Map<String, Object> filtersMap = new HashMap<>();
-        filtersMap.put("title", title);
-        filtersMap.put("status", status != null ? status.name() : null);
-        filtersMap.put("candidateLevel", candidateLevel != null ? candidateLevel.name() : null);
-        filtersMap.put("employmentType", employmentType != null ? employmentType.name() : null);
-        filtersMap.put("workMode", workMode != null ? workMode.name() : null);
-        filtersMap.put("applicationDeadline", applicationDeadline != null ? applicationDeadline.toString() : null);
+        filtersMap.put("title", filter.getTitle());
+        filtersMap.put("status", filter.getStatus() != null ? filter.getStatus().name() : null);
+        filtersMap.put("candidateLevel", filter.getCandidateLevel() != null ? filter.getCandidateLevel().name() : null);
+        filtersMap.put("employmentType", filter.getEmploymentType() != null ? filter.getEmploymentType().name() : null);
+        filtersMap.put("workMode", filter.getWorkMode() != null ? filter.getWorkMode().name() : null);
+        filtersMap.put("applicationDeadline",
+                filter.getApplicationDeadline() != null ? filter.getApplicationDeadline().toString() : null);
 
-        auditService.log(AuditLog.Action.JOB_READ, userEmail, null, "Job",
-                null, httpRequest, true, null,
-                Map.of("resultCount", jobs.getTotalElements(), "filters", filtersMap));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userEmail(userEmail)
+                .entityType("Job")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("resultCount", jobs.getTotalElements(), "filters", filtersMap))
+                .build());
 
         return jobs.map(jobMapper::toResponseDTO);
     }
@@ -93,16 +120,22 @@ public class JobService {
     public List<JobResponseDTO> findByPostedBy(String postedBy, String userEmail, HttpServletRequest httpRequest) {
         List<Job> jobs = jobRepository.findByPostedBy(postedBy);
 
-        auditService.log(AuditLog.Action.JOB_READ, userEmail, null, "Job",
-                null, httpRequest, true, null,
-                Map.of("postedBy", postedBy, "resultCount", jobs.size()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userEmail(userEmail)
+                .entityType("Job")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("postedBy", postedBy, "resultCount", jobs.size()))
+                .build());
 
         return jobs.stream().map(jobMapper::toResponseDTO).toList();
     }
 
     @Transactional
     @CacheEvict(value = "jobs", allEntries = true)
-    public JobResponseDTO updateStatus(UUID id, Job.JobStatus status, String updatedBy, HttpServletRequest httpRequest) {
+    public JobResponseDTO updateStatus(UUID id, Job.JobStatus status,
+                                       String updatedBy, HttpServletRequest httpRequest) {
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + id));
 
@@ -111,9 +144,16 @@ public class JobService {
         job.setUpdatedBy(updatedBy);
         job = jobRepository.save(job);
 
-        auditService.log(AuditLog.Action.JOB_UPDATE, updatedBy, id, "Job",
-                id, httpRequest, true, null,
-                Map.of("oldStatus", oldStatus.name(), "newStatus", status.name()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_UPDATE)
+                .userEmail(updatedBy)
+                .userId(id)
+                .entityType("Job")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("oldStatus", oldStatus.name(), "newStatus", status.name()))
+                .build());
 
         return jobMapper.toResponseDTO(job);
     }
@@ -151,9 +191,16 @@ public class JobService {
         job.setUpdatedBy(updatedBy);
         job = jobRepository.save(job);
 
-        auditService.log(AuditLog.Action.JOB_UPDATE, updatedBy, id, "Job",
-                id, httpRequest, true, null,
-                Map.of("title", job.getTitle(), "status", job.getStatus()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_UPDATE)
+                .userEmail(updatedBy)
+                .userId(id)
+                .entityType("Job")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("title", job.getTitle(), "status", job.getStatus()))
+                .build());
 
         return jobMapper.toResponseDTO(job);
     }
@@ -167,22 +214,40 @@ public class JobService {
         String title = job.getTitle();
         jobRepository.deleteById(id);
 
-        auditService.log(AuditLog.Action.JOB_DELETE, deletedBy, id, "Job",
-                id, httpRequest, true, null,
-                Map.of("title", title));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_DELETE)
+                .userEmail(deletedBy)
+                .userId(id)
+                .entityType("Job")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("title", title))
+                .build());
     }
 
     @Cacheable(value = "jobs", key = "'countByStatus:' + #status")
     public long countByStatus(Job.JobStatus status, String userEmail, HttpServletRequest httpRequest) {
-        auditService.log(AuditLog.Action.JOB_READ, userEmail, null, "Job",
-                null, httpRequest, true, null,
-                Map.of("action", "countByStatus", "status", status.name()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userEmail(userEmail)
+                .entityType("Job")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("action", "countByStatus", "status", status.name()))
+                .build());
 
         return jobRepository.countByStatus(status);
     }
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "createdAt", "updatedAt", "title", "status", "applicationDeadline"
+    );
+
     private Pageable buildPageable(int page, int size, String sortBy, String sortDir) {
-        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
+        String safeSortBy = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "createdAt";
+        String safeSortDir = ("asc".equalsIgnoreCase(sortDir) || "desc".equalsIgnoreCase(sortDir)) ? sortDir : "desc";
+        Sort sort = Sort.by(Sort.Direction.fromString(safeSortDir), safeSortBy);
         return PageRequest.of(page, size, sort);
     }
 }

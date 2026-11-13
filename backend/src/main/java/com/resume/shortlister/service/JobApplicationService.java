@@ -1,6 +1,7 @@
 package com.resume.shortlister.service;
 
 import com.resume.shortlister.audit.AuditLog;
+import com.resume.shortlister.audit.AuditLogParams;
 import com.resume.shortlister.audit.AuditService;
 import com.resume.shortlister.domain.Candidate;
 import com.resume.shortlister.domain.Job;
@@ -22,9 +23,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -40,14 +41,22 @@ public class JobApplicationService {
 
     @Transactional
     @CacheEvict(value = "jobs", allEntries = true)
-    public JobApplicationResponse apply(JobApplicationRequest request, UUID applicantId, HttpServletRequest httpRequest) {
+    public JobApplicationResponse apply(JobApplicationRequest request,
+                                        UUID applicantId,
+                                        HttpServletRequest httpRequest) {
         Job job = jobRepository.findById(request.getJobId())
                 .orElseThrow(() -> new IllegalArgumentException("Job not found: " + request.getJobId()));
 
         if (applicationRepository.existsByJobIdAndApplicantId(request.getJobId(), applicantId)) {
-            auditService.log(AuditLog.Action.JOB_CREATE, null, applicantId, "JobApplication",
-                    null, httpRequest, false, "Already applied to this job",
-                    Map.of("jobId", request.getJobId(), "applicantId", applicantId));
+            auditService.log(AuditLogParams.builder()
+                    .action(AuditLog.Action.JOB_CREATE)
+                    .userId(applicantId)
+                    .entityType("JobApplication")
+                    .request(httpRequest)
+                    .success(false)
+                    .errorMessage("Already applied to this job")
+                    .details(Map.of("jobId", request.getJobId(), "applicantId", applicantId))
+                    .build());
             throw new IllegalArgumentException("You have already applied to this job");
         }
 
@@ -68,14 +77,22 @@ public class JobApplicationService {
         // Create a candidate profile so the application shows up in the recruiter's account
         createCandidateFromApplication(application);
 
-        auditService.log(AuditLog.Action.JOB_CREATE, null, applicantId, "JobApplication",
-                application.getId(), httpRequest, true, null,
-                Map.of("jobId", job.getId(), "jobTitle", job.getTitle(), "applicantEmail", application.getEmail()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_CREATE)
+                .userId(applicantId)
+                .entityType("JobApplication")
+                .entityId(application.getId())
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("jobId", job.getId(), "jobTitle", job.getTitle(),
+                        "applicantEmail", application.getEmail()))
+                .build());
 
         return toResponse(application, job.getTitle());
     }
 
-    public JobApplicationResponse getById(UUID id, UUID applicantId, boolean isRecruiter, HttpServletRequest httpRequest) {
+    public JobApplicationResponse getById(UUID id, UUID applicantId,
+                                          boolean isRecruiter, HttpServletRequest httpRequest) {
         JobApplication application = applicationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Application not found: " + id));
 
@@ -85,9 +102,15 @@ public class JobApplicationService {
 
         Job job = jobRepository.findById(application.getJobId()).orElse(null);
 
-        auditService.log(AuditLog.Action.JOB_READ, null, applicantId, "JobApplication",
-                id, httpRequest, true, null,
-                Map.of("jobId", application.getJobId(), "status", application.getStatus()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userId(applicantId)
+                .entityType("JobApplication")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("jobId", application.getJobId(), "status", application.getStatus()))
+                .build());
 
         return toResponse(application, job != null ? job.getTitle() : null);
     }
@@ -97,9 +120,14 @@ public class JobApplicationService {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Page<JobApplication> applications = applicationRepository.findByApplicantId(applicantId, pageable);
 
-        auditService.log(AuditLog.Action.JOB_READ, null, applicantId, "JobApplication",
-                null, httpRequest, true, null,
-                Map.of("applicantId", applicantId, "resultCount", applications.getTotalElements()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userId(applicantId)
+                .entityType("JobApplication")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("applicantId", applicantId, "resultCount", applications.getTotalElements()))
+                .build());
 
         return applications.map(app -> toResponse(app, null));
     }
@@ -116,9 +144,15 @@ public class JobApplicationService {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Page<JobApplication> applications = applicationRepository.findByJobId(jobId, pageable);
 
-        auditService.log(AuditLog.Action.JOB_READ, recruiterEmail, null, "JobApplication",
-                jobId, httpRequest, true, null,
-                Map.of("jobId", jobId, "resultCount", applications.getTotalElements()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userEmail(recruiterEmail)
+                .entityType("JobApplication")
+                .entityId(jobId)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("jobId", jobId, "resultCount", applications.getTotalElements()))
+                .build());
 
         return applications.map(app -> toResponse(app, job.getTitle()));
     }
@@ -141,9 +175,15 @@ public class JobApplicationService {
         application.setStatus(status);
         application = applicationRepository.save(application);
 
-        auditService.log(AuditLog.Action.JOB_UPDATE, recruiterEmail, null, "JobApplication",
-                id, httpRequest, true, null,
-                Map.of("oldStatus", oldStatus.name(), "newStatus", status.name(), "jobId", job.getId()));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_UPDATE)
+                .userEmail(recruiterEmail)
+                .entityType("JobApplication")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("oldStatus", oldStatus.name(), "newStatus", status.name(), "jobId", job.getId()))
+                .build());
 
         return toResponse(application, job.getTitle());
     }
@@ -160,16 +200,27 @@ public class JobApplicationService {
         UUID jobId = application.getJobId();
         applicationRepository.deleteById(id);
 
-        auditService.log(AuditLog.Action.JOB_DELETE, null, applicantId, "JobApplication",
-                id, httpRequest, true, null,
-                Map.of("jobId", jobId));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_DELETE)
+                .userId(applicantId)
+                .entityType("JobApplication")
+                .entityId(id)
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("jobId", jobId))
+                .build());
     }
 
     @Cacheable(value = "jobs", key = "'jobAppCount:' + #jobId")
     public long countByJobId(UUID jobId, String userEmail, HttpServletRequest httpRequest) {
-        auditService.log(AuditLog.Action.JOB_READ, userEmail, null, "JobApplication",
-                null, httpRequest, true, null,
-                Map.of("action", "countByJobId", "jobId", jobId));
+        auditService.log(AuditLogParams.builder()
+                .action(AuditLog.Action.JOB_READ)
+                .userEmail(userEmail)
+                .entityType("JobApplication")
+                .request(httpRequest)
+                .success(true)
+                .details(Map.of("action", "countByJobId", "jobId", jobId))
+                .build());
 
         return applicationRepository.countByJobId(jobId);
     }
@@ -192,12 +243,15 @@ public class JobApplicationService {
                     .fullName(application.getFullName())
                     .email(application.getEmail())
                     .phone(application.getPhone())
-                    .yearsOfExperience(application.getYearsOfExperience() != null ? application.getYearsOfExperience() : 0)
-                    .technicalSkills(application.getTechnicalSkills() != null ? new java.util.ArrayList<>(application.getTechnicalSkills()) : List.of())
+                    .yearsOfExperience(application.getYearsOfExperience() != null
+                            ? application.getYearsOfExperience() : 0)
+                    .technicalSkills(application.getTechnicalSkills() != null
+                            ? new java.util.ArrayList<>(application.getTechnicalSkills()) : List.of())
                     .location(application.getCurrentLocation())
                     .remotePreference(mapRemotePreference(application.getRemotePreference()))
                     .noticePeriod(application.getNoticePeriod())
-                    .salaryExpectation(application.getSalaryExpectation() != null ? application.getSalaryExpectation() : 0)
+                    .salaryExpectation(application.getSalaryExpectation() != null
+                            ? application.getSalaryExpectation() : 0)
                     .currency(application.getCurrency() != null ? application.getCurrency() : "USD")
                     .resumeUrl(application.getResumeUrl())
                     .portfolioUrl(application.getPortfolioUrl())
@@ -208,9 +262,15 @@ public class JobApplicationService {
             candidateRepository.save(candidate);
         } catch (Exception e) {
             // Candidate creation must not fail the job application submission
-            auditService.log(AuditLog.Action.CANDIDATE_CREATE, null, application.getApplicantId(), "JobApplication",
-                    application.getId(), null, false, "Failed to create candidate from application: " + e.getMessage(),
-                    Map.of("jobId", application.getJobId(), "applicantId", application.getApplicantId()));
+            auditService.log(AuditLogParams.builder()
+                    .action(AuditLog.Action.CANDIDATE_CREATE)
+                    .userId(application.getApplicantId())
+                    .entityType("JobApplication")
+                    .entityId(application.getId())
+                    .success(false)
+                    .errorMessage("Failed to create candidate from application: " + e.getMessage())
+                    .details(Map.of("jobId", application.getJobId(), "applicantId", application.getApplicantId()))
+                    .build());
         }
     }
 
@@ -225,8 +285,14 @@ public class JobApplicationService {
         }
     }
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "appliedAt", "updatedAt", "fullName", "email", "status", "yearsOfExperience"
+    );
+
     private Pageable buildPageable(int page, int size, String sortBy, String sortDir) {
-        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
+        String safeSortBy = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "appliedAt";
+        String safeSortDir = ("asc".equalsIgnoreCase(sortDir) || "desc".equalsIgnoreCase(sortDir)) ? sortDir : "desc";
+        Sort sort = Sort.by(Sort.Direction.fromString(safeSortDir), safeSortBy);
         return PageRequest.of(page, size, sort);
     }
 }
