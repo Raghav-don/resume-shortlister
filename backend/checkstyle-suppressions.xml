@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Puppy Crawl//DTD Suppressions 1.1//EN"
+    "https://checkstyle.org/dtds/suppressions_1_1.dtd">
+
+<suppressions>
+    <!--
+      ResumeShortlisterApplication is a Spring Boot bootstrap class. It cannot be declared
+      final because @SpringBootApplication is meta-annotated with @Configuration, and Spring
+      requires CGLIB proxying of configuration classes. Keep it non-final for runtime correctness.
+    -->
+    <suppress files="ResumeShortlisterApplication\.java" checks="FinalClass"/>
+    <suppress files="ResumeShortlisterApplication\.java" checks="HideUtilityClassConstructor"/>
+</suppressions>
